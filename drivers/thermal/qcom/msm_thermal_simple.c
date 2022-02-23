@@ -62,7 +62,7 @@ static void thermal_throttle_worker(struct work_struct *work)
 	struct thermal_drv *t = container_of(to_delayed_work(work), typeof(*t),
 					     throttle_work);
 	struct thermal_zone *new_zone, *old_zone;
-	int temp = 0, temp_cpus_avg = 0, temp_batt = 0;
+	int temp = 0, temp_gpu = 0;
 	s64 temp_total = 0, temp_avg = 0;
 	short i = 0;
 
@@ -74,29 +74,29 @@ static void thermal_throttle_worker(struct work_struct *work)
 		temp_total += temp;
 	}
 
-	temp_cpus_avg = temp_total / NR_CPUS;
+	temp_avg = temp_total / NR_CPUS;
 
-	/* Now let's also get battery temperature */
-	thermal_zone_get_temp(thermal_zone_get_zone_by_name("battery"), &temp_batt);
+	/* Checking GPU temperature */
+	thermal_zone_get_temp(thermal_zone_get_zone_by_name("gpuss-0-usr"), &temp_gpu);
 
-	/* HQ autism coming up */
-	if (temp_batt <= 26000)
-		/* Battery is cool-ish, bias the temp towards it */
-		temp_avg = (temp_cpus_avg * 2 + temp_batt * 3) / 5;
-	else if (temp_batt > 26000 && temp_batt <= 30000)
-		/* Getting warmer, start biasing towards CPU temps */
-		temp_avg = (temp_cpus_avg * 3 + temp_batt * 2) / 5;
-	else if (temp_batt > 30000 && temp_batt <= 38000)
-		/* Getting even warmer, go even more towards CPU temps */
-		temp_avg = (temp_cpus_avg * 4 + temp_batt) / 5;
-	else if (temp_batt > 38000)
-		/* Battery is hot, go for CPU temps */
-		temp_avg = (temp_cpus_avg * 5 + temp_batt) / 6;
+	/* (Number of CPUs * 8) + current temp of the GPU,
+	   this will add an overlay on top of the current cpu
+	   temperature and make the thermal_simple driver set 
+	   a zone above the one it should, decreasing temps in
+	   games or GPU heavy tasks while maintaining good CPU
+	   performance in CPU only tasks */
 
-	/* Emergency case */
-	if (temp_cpus_avg > 90000)
-		temp_avg = (temp_cpus_avg * 6 + temp_batt) / 7;
-
+	if (temp_gpu >= 63000)
+		/* GPU started to get hot, using base values
+		   so throttling is not so agressive at this point. */
+		temp_avg = (temp_total + 35000) / NR_CPUS;
+	else if (temp_gpu >= 65000)
+		temp_avg = (temp_total + 55000) / NR_CPUS;
+	else if (temp_gpu >= 68000)
+		temp_avg = (temp_total + 65000) / NR_CPUS;
+	else if (temp_gpu >= 70000)
+		temp_avg = (temp_total + temp_gpu) / NR_CPUS;
+		
 	old_zone = t->curr_zone;
 	new_zone = NULL;
 
@@ -109,7 +109,7 @@ static void thermal_throttle_worker(struct work_struct *work)
 
 	/* Update thermal zone if it changed */
 	if (new_zone != old_zone) {
-		pr_info("temp_avg: %i, batt: %i, cpus: %i\n", temp_avg, temp_batt, temp_cpus_avg);
+		pr_info("temp_avg: %i, temp_gpu: %i\n", temp_avg, temp_gpu);
 		t->curr_zone = new_zone;
 		update_online_cpu_policy();
 	}
