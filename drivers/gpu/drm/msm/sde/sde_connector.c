@@ -1198,10 +1198,14 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 	/* connector-specific property handling */
 	idx = msm_property_index(&c_conn->property_info, property);
 	switch (idx) {
-	case CONNECTOR_PROP_OUT_FB:
-		/* clear old fb, if present */
-		if (c_state->out_fb)
-			_sde_connector_destroy_fb(c_conn, c_state);
+        case CONNECTOR_PROP_LP:
+                if(connector->dev)
+                        connector->dev->doze_state = val;
+                break;
+        case CONNECTOR_PROP_OUT_FB:
+                /* clear old fb, if present */
+                if (c_state->out_fb)
+                        _sde_connector_destroy_fb(c_conn, c_state);
 
 		/* convert fb val to drm framebuffer and prepare it */
 		c_state->out_fb =
