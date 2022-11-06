@@ -4143,6 +4143,9 @@ try_onemore:
 	if (err)
 		goto free_bio_info;
 
+	spin_lock_init(&sbi->error_lock);
+	memcpy(sbi->errors, raw_super->s_errors, MAX_F2FS_ERRORS);
+
 	init_f2fs_rwsem(&sbi->cp_rwsem);
 	init_f2fs_rwsem(&sbi->quota_sem);
 	init_f2fs_rwsem(&sbi->cp_quota_rwsem);
