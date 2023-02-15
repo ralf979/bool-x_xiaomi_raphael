@@ -15,8 +15,6 @@
 #include <linux/cgroupstats.h>
 
 #include <linux/binfmts.h>
-#include <linux/devfreq_boost.h>
-#include <linux/cpu_input_boost.h>
 #include <trace/events/cgroup.h>
 
 /*
@@ -508,7 +506,6 @@ static int cgroup_pidlist_show(struct seq_file *s, void *v)
 	return 0;
 }
 
-extern int kp_active_mode(void);
 static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 				     char *buf, size_t nbytes, loff_t off,
 				     bool threadgroup)
@@ -544,21 +541,6 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 		goto out_finish;
 
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
-
-	/* This covers boosting for app launches and app transitions */
-        if (!ret && !threadgroup &&
-               !memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
-               task_is_zygote(task->parent)) {
-	       if (kp_active_mode() == 2) {
-	       cpu_input_boost_kick_max(50);
-	       devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
-	       } else if (task_is_zygote(current) && ((kp_active_mode() == 3) || (kp_active_mode() == 0))) {
-	       devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 100);
-	       cpu_input_boost_kick_max(1000);
-	       } else if (task_is_zygote(current) && (kp_active_mode() == 1)) {
-	       pr_info("Battery profile detected! Skipping DDR bus boost...\n");
-	       }
-        }
 
 out_finish:
 	cgroup_procs_write_finish(task);
