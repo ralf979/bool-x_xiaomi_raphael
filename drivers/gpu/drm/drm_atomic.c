@@ -2254,14 +2254,10 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 
 	/* Boost CPU and DDR when committing a new frame */
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-	    if (kp_active_mode() == 2) {
-	  devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
-	  cpu_input_boost_kick_max(50); /*for next if i need back cpu_input_boost */
-	  }  else if (kp_active_mode() == 3 || kp_active_mode() == 0) {
-	  devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 75);
-	  cpu_input_boost_kick_max(75);
-	  }  else if (kp_active_mode() == 1) {
-	  pr_debug("Battery profile detected! Skipping DDR bus boost...\n");
+	    if (kp_active_mode() == 2 || kp_active_mode() == 3 || kp_active_mode() == 0) {
+		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+		if (sysctl_sched_boost)
+			cpu_input_boost_kick();
 	    }
 	}
 
