@@ -722,13 +722,13 @@ static void sugov_work(struct kthread_work *work)
 	{
 	   if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_perf_mask)) 
 	   {
-		sg_policy->policy->max=CONFIG_CPU_FREQ_IDLE_PERF;
+		sg_policy->policy->max=710400;
 		//__cpufreq_driver_target(sg_policy->policy, CONFIG_CPU_FREQ_IDLE_PERF,CPUFREQ_RELATION_L);
 
           } 
           else if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_prime_mask)) 
 	   {
-	       sg_policy->policy->max=CONFIG_CPU_FREQ_IDLE_PRIME;
+	       sg_policy->policy->max=825600;
 		//__cpufreq_driver_target(sg_policy->policy, CONFIG_CPU_FREQ_IDLE_PRIME,CPUFREQ_RELATION_L);
 	   }
 	}
