@@ -450,8 +450,8 @@ static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
 #endif /* CONFIG_NO_HZ_COMMON */
 
 #define NL_RATIO 75
-#define DEFAULT_HISPEED_LOAD_LP 75
-#define DEFAULT_HISPEED_LOAD_HP 85
+#define DEFAULT_HISPEED_LOAD_LP 90
+#define DEFAULT_HISPEED_LOAD_HP 90
 #define DEFAULT_HISPEED_LOAD_PR 90
 #define DEFAULT_CPU0_RTG_BOOST_FREQ 1612800
 #define DEFAULT_CPU4_RTG_BOOST_FREQ 1862400
