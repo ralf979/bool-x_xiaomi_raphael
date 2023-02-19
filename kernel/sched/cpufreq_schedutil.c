@@ -50,6 +50,7 @@ struct sugov_tunables {
 	int 			current_step;
 	unsigned int rtg_boost_freq;
 	bool pl;
+	bool iowait_boost_enable;
 };
 
 struct sugov_policy {
@@ -894,6 +895,31 @@ static ssize_t down_rate_limit_us_store(struct gov_attr_set *attr_set,
 	return count;
 }
 
+static ssize_t iowait_boost_enable_show(struct gov_attr_set *attr_set,
+					char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return sprintf(buf, "%u\n", tunables->iowait_boost_enable);
+}
+
+static ssize_t iowait_boost_enable_store(struct gov_attr_set *attr_set,
+					 const char *buf, size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+	bool enable;
+
+	if (task_is_booster(current))
+		return count;
+
+	if (kstrtobool(buf, &enable))
+		return -EINVAL;
+
+	tunables->iowait_boost_enable = enable;
+
+	return count;
+}
+
 static ssize_t hispeed_load_show(struct gov_attr_set *attr_set, char *buf)
 {
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
@@ -1073,6 +1099,7 @@ static ssize_t up_delay_store(struct gov_attr_set *attr_set,
 
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
+static struct governor_attr iowait_boost_enable = __ATTR_RW(iowait_boost_enable);
 static struct governor_attr hispeed_load = __ATTR_RW(hispeed_load);
 static struct governor_attr hispeed_freq = __ATTR_RW(hispeed_freq);
 static struct governor_attr rtg_boost_freq = __ATTR_RW(rtg_boost_freq);
@@ -1083,6 +1110,7 @@ static struct governor_attr up_delay = __ATTR_RW(up_delay);
 static struct attribute *sugov_attributes[] = {
 	&up_rate_limit_us.attr,
 	&down_rate_limit_us.attr,
+	&iowait_boost_enable.attr,
 	&hispeed_load.attr,
 	&hispeed_freq.attr,
 	&rtg_boost_freq.attr,
@@ -1297,6 +1325,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 	if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_lp_mask)) {
 		tunables->up_rate_limit_us = 1000;
 		tunables->down_rate_limit_us = 1000;
+		tunables->iowait_boost_enable = true;
 		tunables->efficient_freq = default_efficient_freq_lp;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_lp);
 		tunables->hispeed_load = DEFAULT_HISPEED_LOAD_LP;
@@ -1306,6 +1335,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 	} else if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_perf_mask)) {
 		tunables->up_rate_limit_us = 1000;
 		tunables->down_rate_limit_us = 2000;
+		tunables->iowait_boost_enable = true;
 		tunables->efficient_freq = default_efficient_freq_hp;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_hp);
 		tunables->hispeed_load = DEFAULT_HISPEED_LOAD_HP;
@@ -1315,6 +1345,7 @@ static int sugov_init(struct cpufreq_policy *policy)
 	} else {
 		tunables->up_rate_limit_us = 16000;
     		tunables->down_rate_limit_us = 4000;
+		tunables->iowait_boost_enable = true;
 		tunables->efficient_freq = default_efficient_freq_pr;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_pr);
 		tunables->hispeed_load = DEFAULT_HISPEED_LOAD_PR;
