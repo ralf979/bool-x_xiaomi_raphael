@@ -779,7 +779,6 @@ static int qcom_smp2p_restore(struct device *dev)
 	}
 	wakeup_source_init(&smp2p->ws, "smp2p");
 
-	smp2p->ws = wakeup_source_register(&pdev->dev, "smp2p");
 	/* Kick the outgoing edge after allocating entries */
 	qcom_smp2p_kick(smp2p);
 
