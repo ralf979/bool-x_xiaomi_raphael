@@ -44,7 +44,7 @@ config TOUCHSCREEN_GOODIX_GTX8_TOOLS
 
 config TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
         bool "Goodix game mode support"
-        default n
+        default y
         help
           Say Y here to enable game mode.
 endif

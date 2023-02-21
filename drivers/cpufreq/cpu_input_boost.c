@@ -87,6 +87,9 @@ module_param(wake_boost_duration, short, 0644);
 
 module_param(dynamic_sched_boost, bool, 0644);
 
+static bool input_boost_enable = true;
+module_param(input_boost_enable, bool, 0644);
+
 
 enum {
 	SCREEN_OFF,
@@ -223,7 +226,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
 		return;
 
-	if (!input_boost_duration)
+	if (!input_boost_duration || !input_boost_enable)
 		return;
 
 	if (kp_active_mode() == 3)

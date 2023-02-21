@@ -496,8 +496,7 @@ static int goodix_ts_convert_0x_data(const u8 *buf, int buf_size,
 			continue;
 
 		if (temp_index >= m_size) {
-			ts_err("exchange cfg data error, overflow,"
-			       "temp_index:%d,m_size:%d\n",
+			ts_err("exchange cfg data error, overflow,temp_index:%d,m_size:%d\n",
 			       temp_index, m_size);
 			return -EINVAL;
 		}
@@ -783,6 +782,17 @@ static void gtp_init_touchmode_data(void)
 	return;
 }
 
+void gtp_game_mode_rerun(struct goodix_ts_core *core_data)
+{
+	u8 i;
+
+	for (i = 0; i < Touch_Mode_NUM; i++)
+		if (core_data->touch_mode[i][GET_CUR_VALUE])
+			gtp_set_cur_value(i, core_data->touch_mode[i][GET_CUR_VALUE]);
+
+	return;
+}
+
 static ssize_t goodix_ts_game_mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -824,7 +834,8 @@ static ssize_t udfps_pressed_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-	return scnprintf(buf, 10, "%i\n", core_data->udfps_pressed);
+
+	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->udfps_pressed);
 }
 
 static ssize_t udfps_enabled_store(struct device *dev,
@@ -832,6 +843,7 @@ static ssize_t udfps_enabled_store(struct device *dev,
 				  size_t count)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	core_data->udfps_enabled = buf[0] != '0';
 
 	core_data->gesture_enabled = core_data->double_tap_enabled | core_data->udfps_enabled;
@@ -845,14 +857,16 @@ static ssize_t udfps_enabled_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-	return scnprintf(buf, 10, "%i\n", core_data->udfps_enabled);
+
+	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->udfps_enabled);
 }
 
 static ssize_t double_tap_pressed_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-	return scnprintf(buf, 10, "%i\n", core_data->double_tap_pressed);
+
+	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->double_tap_pressed);
 }
 
 static ssize_t double_tap_enabled_store(struct device *dev,
@@ -860,6 +874,7 @@ static ssize_t double_tap_enabled_store(struct device *dev,
 				  size_t count)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
+
 	core_data->double_tap_enabled = buf[0] != '0';
 
 	core_data->gesture_enabled = core_data->double_tap_enabled | core_data->udfps_enabled;
@@ -873,7 +888,8 @@ static ssize_t double_tap_enabled_show(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-	return scnprintf(buf, 10, "%i\n", core_data->double_tap_enabled);
+
+	return scnprintf(buf, PAGE_SIZE, "%i\n", core_data->double_tap_enabled);
 }
 
 static DEVICE_ATTR(extmod_info, 0444, goodix_ts_extmod_show, NULL);
@@ -996,6 +1012,7 @@ static inline int goodix_ts_input_report(struct input_dev *dev,
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
 	unsigned int touch_num = touch_data->touch_num;
 	int i, id;
+	bool event_fod;
 
 	if (core_data->fod_status) {
 		if ((core_data->event_status & 0x20) == 0x20) {
@@ -1006,7 +1023,8 @@ static inline int goodix_ts_input_report(struct input_dev *dev,
 
 	mutex_lock(&ts_dev->report_mutex);
 	id = coords->id;
-	for (i = 0; i < ts_bdata->panel_max_id * 2; i++) {
+	event_fod = (core_data->event_status & 0x88) == 0x88;
+	for (i = 0; i < ts_bdata->panel_max_id; i++) {
 		if (touch_num && i == id) { /* this is a valid touch down event */
 			input_mt_slot(dev, id);
 			input_mt_report_slot_state(dev, MT_TOOL_FINGER, true);
@@ -1022,7 +1040,7 @@ static inline int goodix_ts_input_report(struct input_dev *dev,
 			input_report_abs(dev, ABS_MT_TOUCH_MINOR, coords->area);
 			*/
 
-			if ((core_data->event_status & 0x88) != 0x88 || !core_data->fod_status)
+			if (!event_fod || !core_data->fod_status)
 				coords->overlapping_area = 0;
 			input_report_abs(dev, ABS_MT_WIDTH_MINOR, coords->overlapping_area);
 			input_report_abs(dev, ABS_MT_WIDTH_MAJOR, coords->overlapping_area);
@@ -1049,12 +1067,12 @@ static inline int goodix_ts_input_report(struct input_dev *dev,
 
 	/*report finger*/
 	/*ts_info("get_event_now :0x%02x, pre_event : %d", get_event_now, pre_event);*/
-	if ((core_data->event_status & 0x88) == 0x88 && core_data->fod_status) {
+	if (event_fod && core_data->fod_status) {
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
 			core_data->fod_pressed = true;
 			ts_info("BTN_INFO press");
-		} else if (core_data->fod_pressed && (core_data->event_status & 0x88) != 0x88) {
+		} else if (core_data->fod_pressed && !event_fod) {
 		if (unlikely(!core_data->fod_test)) {
 			input_report_key(core_data->input_dev, BTN_INFO, 0);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
@@ -1153,24 +1171,26 @@ static inline irqreturn_t goodix_ts_threadirq_func(int irq, void *data)
 		goto handled;
 	}
 
-	mutex_lock(&goodix_modules.mutex);
-	list_for_each_entry(ext_module, &goodix_modules.head, list) {
-		if (!ext_module->funcs->irq_event)
-			continue;
-		r = ext_module->funcs->irq_event(core_data, ext_module);
-		/*ts_err("enter %s r=%d\n", __func__, r);*/
-		if (r == EVT_CANCEL_IRQEVT) {
-			ts_err("enter %s EVT_CANCEL_IRQEVT\n", __func__);
-			mutex_unlock(&goodix_modules.mutex);
-			goto handled;
+	if (atomic_read(&core_data->suspended)) {
+		mutex_lock(&goodix_modules.mutex);
+		list_for_each_entry(ext_module, &goodix_modules.head, list) {
+			if (!ext_module->funcs->irq_event)
+				continue;
+			r = ext_module->funcs->irq_event(core_data, ext_module);
+			ts_err("enter %s r=%d\n", __func__, r);
+			if (r == EVT_CANCEL_IRQEVT) {
+				/*ts_err("enter %s EVT_CANCEL_IRQEVT\n", __func__);*/
+				mutex_unlock(&goodix_modules.mutex);
+				goto handled;
+			}
 		}
+		mutex_unlock(&goodix_modules.mutex);
 	}
-	mutex_unlock(&goodix_modules.mutex);
 
 	/* read touch data from touch device */
 	r = ts_dev->hw_ops->event_handler(ts_dev, ts_event);
 	if (likely(r >= 0)) {
-		if (ts_event->event_type == EVENT_TOUCH) {
+		if (likely(ts_event->event_type == EVENT_TOUCH)) {
 			/* report touch */
 			goodix_ts_input_report(core_data->input_dev,
 					&ts_event->event_data.touch_data);
@@ -1249,6 +1269,7 @@ EXPORT_SYMBOL(goodix_ts_irq_enable);
 static int goodix_ts_power_init(struct goodix_ts_core *core_data)
 {
 	struct goodix_ts_board_data *ts_bdata;
+
 	ts_bdata = board_data(core_data);
 
 	gpio_direction_output(ts_bdata->reset_gpio, 0);
@@ -1423,7 +1444,7 @@ static ssize_t gtp_fod_status_show(struct device *dev,
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
 
-	return snprintf(buf, 10, "%d\n", core_data->fod_status);
+	return snprintf(buf, PAGE_SIZE, "%d\n", core_data->fod_status);
 }
 
 static ssize_t gtp_fod_status_store(struct device *dev,
@@ -1456,8 +1477,6 @@ static void goodix_ts_set_input_params(struct input_dev *input_dev,
 {
 	int i;
 
-	if (ts_bdata->swap_axis)
-		swap(ts_bdata->panel_max_x, ts_bdata->panel_max_y);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_X,
 			0, ts_bdata->panel_max_x, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
@@ -1757,13 +1776,14 @@ int goodix_ts_suspend(struct goodix_ts_core *core_data)
 				} else if (core_data->udfps_enabled) {
 					atomic_set(&core_data->suspend_stat, TP_GESTURE_FOD);
 				}
-				mutex_unlock(&goodix_modules.mutex);
 				ts_info("suspend_stat[%d]", atomic_read(&core_data->suspend_stat));
 				ts_info("Canceled by module:%s", ext_module->name);
-				if (!atomic_read(&core_data->suspend_stat))
+				if (!atomic_read(&core_data->suspend_stat)) {
 					ts_info("go suspend remaind work\n");
-				else
+				} else {
+					mutex_unlock(&goodix_modules.mutex);
 					goto out;
+				}
 			}
 		}
 	}
@@ -1904,6 +1924,10 @@ out:
 
 	mutex_unlock(&core_data->work_stat);
 
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
+	gtp_game_mode_rerun(core_data);
+#endif
+
 	ts_info("Resume end");
 	return 0;
 }
@@ -1945,15 +1969,11 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 		flush_workqueue(core_data->event_wq);
 
 		switch (blank) {
-			case MSM_DRM_BLANK_POWERDOWN:
-				goto suspend;
-				break;
-			case MSM_DRM_BLANK_LP:
-				goto suspend;
-				break;
-			case MSM_DRM_BLANK_UNBLANK:
-				goto resume;
-				break;
+		case MSM_DRM_BLANK_POWERDOWN:
+		case MSM_DRM_BLANK_LP:
+			goto suspend;
+		case MSM_DRM_BLANK_UNBLANK:
+			goto resume;
 		}
 	}
 

@@ -1869,16 +1869,10 @@ static int sdhci_msm_pm_qos_parse_cpu_groups(struct device *dev,
 {
 	struct device_node *np = dev->of_node;
 	u32 mask;
-	int nr_groups;
+	int nr_groups = 1;
 	int ret;
 	int i;
 
-	/* Read cpu group mapping */
-	nr_groups = of_property_count_u32_elems(np, "qcom,pm-qos-cpu-groups");
-	if (nr_groups <= 0) {
-		ret = -EINVAL;
-		goto out;
-	}
 	pdata->pm_qos_data.cpu_group_map.nr_groups = nr_groups;
 	pdata->pm_qos_data.cpu_group_map.mask =
 		kcalloc(nr_groups, sizeof(cpumask_t), GFP_KERNEL);
@@ -3014,8 +3008,10 @@ static void sdhci_msm_check_power_status(struct sdhci_host *host, u32 req_type)
 		init_completion(&msm_host->pwr_irq_completion);
 	else if (!wait_for_completion_timeout(&msm_host->pwr_irq_completion,
 				msecs_to_jiffies(MSM_PWR_IRQ_TIMEOUT_MS))) {
-		__WARN_printf("%s: request(%d) timed out waiting for pwr_irq\n",
-					mmc_hostname(host->mmc), req_type);
+		#ifdef CONFIG_BUG
+			__WARN_printf("%s: request(%d) timed out waiting for pwr_irq\n",
+						mmc_hostname(host->mmc), req_type);
+		#endif
 		MMC_TRACE(host->mmc,
 			"%s: request(%d) timed out waiting for pwr_irq\n",
 			__func__, req_type);

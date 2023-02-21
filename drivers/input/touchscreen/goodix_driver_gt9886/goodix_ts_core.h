@@ -497,10 +497,10 @@ struct goodix_ts_core {
 	int aod_status;
 	int fod_pressed;
 	int fod_test;
-	int udfps_pressed;
-	int udfps_enabled;
-	int double_tap_pressed;
-	int double_tap_enabled;
+	u8 udfps_pressed;
+	u8 udfps_enabled;
+	u8 double_tap_pressed;
+	u8 double_tap_enabled;
 	int result_type;
 #ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
 	int touch_mode[Touch_Mode_NUM][VALUE_TYPE_SIZE];
@@ -872,7 +872,6 @@ extern struct goodix_ts_core *goodix_core_data;
 #define GOODIX_DRIVER_VERSION		"v1.2.0.1"
 #define GOODIX_BUS_RETRY_TIMES		3
 #define GOODIX_MAX_TOUCH			10
-#define GOODIX_MAX_PEN				1
 #define GOODIX_MAX_KEY				3
 #define GOODIX_PEN_MAX_KEY			2
 #define GOODIX_CFG_MAX_SIZE			1024
@@ -938,7 +937,6 @@ struct goodix_module {
  * @irq_flag: irq trigger type
  * @power_on_delay_us: power on delay time (us)
  * @power_off_delay_us: power off delay time (us)
- * @swap_axis: whether swaw x y axis
  * @panel_max_id: max supported fingers
  * @panel_max_x/y/w/p: resolution and size
  * @panel_max_key: max supported keys
@@ -959,7 +957,6 @@ struct goodix_ts_board_data {
 	unsigned int power_on_delay_us;
 	unsigned int power_off_delay_us;
 
-	unsigned int swap_axis;
 	unsigned int panel_max_id; /*max touch id*/
 	unsigned int panel_max_x;
 	unsigned int panel_max_y;
@@ -972,7 +969,6 @@ struct goodix_ts_board_data {
 	/*add by lishuai*/
 	unsigned int x2x;
 	unsigned int y2y;
-	bool pen_enable;
 	unsigned int tp_key_num;
 	/*add end*/
 
@@ -1068,9 +1064,6 @@ struct goodix_touch_data {
 	/* key */
 	u8 key_value;
 	bool have_key;
-	/*pen*/
-	struct goodix_ts_coords pen_coords[GOODIX_MAX_PEN];
-	bool pen_down;
 };
 
 /* request event data */
@@ -1287,10 +1280,10 @@ struct goodix_ts_core {
 	int aod_status;
 	int fod_pressed;
 	int fod_test;
-	int udfps_pressed;
-	int udfps_enabled;
-	int double_tap_pressed;
-	int double_tap_enabled;
+	u8 udfps_pressed;
+	u8 udfps_enabled;
+	u8 double_tap_pressed;
+	u8 double_tap_enabled;
 	int result_type;
 	struct class *gtp_tp_class;
 	struct device *gtp_touch_dev;
