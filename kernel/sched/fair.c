@@ -90,8 +90,8 @@ walt_dec_cfs_rq_stats(struct cfs_rq *cfs_rq, struct task_struct *p) {}
  *
  * (default: 6ms * (1 + ilog(ncpus)), units: nanoseconds)
  */
-unsigned int sysctl_sched_latency			= 1000000ULL;
-unsigned int normalized_sysctl_sched_latency		= 1000000ULL;
+unsigned int sysctl_sched_latency			= 6000000ULL;
+unsigned int normalized_sysctl_sched_latency		= 6000000ULL;
 /*
  * Enable/disable honoring sync flag in energy-aware wakeups.
  */
@@ -119,8 +119,8 @@ enum sched_tunable_scaling sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_L
  *
  * (default: 0.75 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
-unsigned int sysctl_sched_min_granularity		= 5000000ULL;
-unsigned int normalized_sysctl_sched_min_granularity	= 5000000ULL;
+unsigned int sysctl_sched_min_granularity		= 750000ULL;
+unsigned int normalized_sysctl_sched_min_granularity	= 750000ULL;
 /*
  * This value is kept at sysctl_sched_latency/sysctl_sched_min_granularity
  */
@@ -146,11 +146,18 @@ unsigned int __read_mostly sysctl_sched_energy_aware = 1;
  *
  * (default: 1 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
-unsigned int sysctl_sched_wakeup_granularity		= 5000000UL;
-unsigned int normalized_sysctl_sched_wakeup_granularity	= 5000000UL;
+unsigned int sysctl_sched_wakeup_granularity		= 1000000UL;
+unsigned int normalized_sysctl_sched_wakeup_granularity	= 1000000UL;
 
-const_debug unsigned int sysctl_sched_migration_cost	= 1000000UL;
+const_debug unsigned int sysctl_sched_migration_cost	= 500000UL;
 DEFINE_PER_CPU_READ_MOSTLY(int, sched_load_boost);
+
+#ifdef CONFIG_SCHED_WALT
+unsigned int sysctl_sched_use_walt_cpu_util = 1;
+unsigned int sysctl_sched_use_walt_task_util = 1;
+__read_mostly unsigned int sysctl_sched_walt_cpu_high_irqload =
+    (10 * NSEC_PER_MSEC);
+#endif
 
 #ifdef CONFIG_SMP
 /*
@@ -11193,7 +11200,7 @@ static int active_load_balance_cpu_stop(void *data);
 static int should_we_balance(struct lb_env *env)
 {
 	struct sched_group *sg = env->sd->groups;
-	int cpu;
+	int cpu, balance_cpu = -1;
 
 	/*
 	 * Ensure the balancing environment is consistent; can happen
@@ -11214,12 +11221,18 @@ static int should_we_balance(struct lb_env *env)
 		if (!idle_cpu(cpu) || cpu_isolated(cpu))
 			continue;
 
-		/* Are we the first idle CPU? */
-		return cpu == env->dst_cpu;
+		balance_cpu = cpu;
+		break;
 	}
 
-	/* Are we the first CPU of this group ? */
-	return group_balance_cpu(sg) == env->dst_cpu;
+	if (balance_cpu == -1)
+		balance_cpu = group_balance_cpu_not_isolated(sg);
+
+	/*
+	 * First idle cpu or the first cpu(busiest) in this sched group
+	 * is eligible for doing load balancing at this and above domains.
+	 */
+	return balance_cpu == env->dst_cpu;
 }
 
 /*
