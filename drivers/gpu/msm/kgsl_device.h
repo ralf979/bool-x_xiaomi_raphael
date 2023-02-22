@@ -346,18 +346,17 @@ struct kgsl_device {
 	container_of((_mmu), struct kgsl_device, mmu)
 
 #define KGSL_DEVICE_COMMON_INIT(_dev) \
-	.hwaccess_gate = COMPLETION_INITIALIZER((_dev).hwaccess_gate),\
-	.halt_gate = COMPLETION_INITIALIZER((_dev).halt_gate),\
-	.idle_check_ws = __WORK_INITIALIZER((_dev).idle_check_ws,\
-			kgsl_idle_check),\
-	.context_idr = IDR_INIT,\
-	.wait_queue = __WAIT_QUEUE_HEAD_INITIALIZER((_dev).wait_queue),\
-	.active_cnt_wq = __WAIT_QUEUE_HEAD_INITIALIZER((_dev).active_cnt_wq),\
-	.mutex = __MUTEX_INITIALIZER((_dev).mutex),\
-	.state = KGSL_STATE_NONE,\
-	.ver_major = DRIVER_VERSION_MAJOR,\
-	.ver_minor = DRIVER_VERSION_MINOR
-
+        .hwaccess_gate = COMPLETION_INITIALIZER((_dev).hwaccess_gate),\
+        .halt_gate = COMPLETION_INITIALIZER((_dev).halt_gate),\
+        .idle_check_ws = __WORK_INITIALIZER((_dev).idle_check_ws,\
+                        kgsl_idle_check),\
+        .context_idr = IDR_INIT(_dev),\
+        .wait_queue = __WAIT_QUEUE_HEAD_INITIALIZER((_dev).wait_queue),\
+        .active_cnt_wq = __WAIT_QUEUE_HEAD_INITIALIZER((_dev).active_cnt_wq),\
+        .mutex = __MUTEX_INITIALIZER((_dev).mutex),\
+        .state = KGSL_STATE_NONE,\
+        .ver_major = DRIVER_VERSION_MAJOR,\
+        .ver_minor = DRIVER_VERSION_MINOR
 
 /**
  * enum bits for struct kgsl_context.priv
