@@ -481,7 +481,7 @@ static int fq_codel_init(struct Qdisc *sch, struct nlattr *opt)
 			return err;
 	}
 
-	err = tcf_block_get(&q->block, &q->filter_list, sch);
+	err = tcf_block_get(&q->block, &q->filter_list);
 	if (err)
 		return err;
 
