@@ -455,8 +455,8 @@ static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
 #define DEFAULT_HISPEED_LOAD_HP 90
 #define DEFAULT_HISPEED_LOAD_PR 90
 #define DEFAULT_CPU0_RTG_BOOST_FREQ 1612800
-#define DEFAULT_CPU4_RTG_BOOST_FREQ 1862400
-#define DEFAULT_CPU7_RTG_BOOST_FREQ 2073600
+#define DEFAULT_CPU4_RTG_BOOST_FREQ 0
+#define DEFAULT_CPU7_RTG_BOOST_FREQ 0
 static void sugov_walt_adjust(struct sugov_cpu *sg_cpu, unsigned long *util,
 			      unsigned long *max)
 {
@@ -1150,7 +1150,7 @@ static struct sugov_policy *sugov_policy_alloc(struct cpufreq_policy *policy)
 	return sg_policy;
 }
 
-static inline void sugov_policy_free(struct sugov_policy *sg_policy)
+static void sugov_policy_free(struct sugov_policy *sg_policy)
 {
 	kfree(sg_policy);
 }

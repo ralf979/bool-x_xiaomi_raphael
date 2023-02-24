@@ -1033,7 +1033,7 @@ hfsc_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 	if (cl == NULL)
 		return -ENOBUFS;
 
-	err = tcf_block_get(&cl->block, &cl->filter_list, sch);
+	err = tcf_block_get(&cl->block, &cl->filter_list);
 	if (err) {
 		kfree(cl);
 		return err;
@@ -1144,7 +1144,6 @@ hfsc_classify(struct sk_buff *skb, struct Qdisc *sch, int *qerr)
 		case TC_ACT_STOLEN:
 		case TC_ACT_TRAP:
 			*qerr = NET_XMIT_SUCCESS | __NET_XMIT_STOLEN;
-			/* fall through */
 		case TC_ACT_SHOT:
 			return NULL;
 		}
@@ -1406,7 +1405,7 @@ hfsc_init_qdisc(struct Qdisc *sch, struct nlattr *opt)
 		return err;
 	q->eligible = RB_ROOT;
 
-	err = tcf_block_get(&q->root.block, &q->root.filter_list, sch);
+	err = tcf_block_get(&q->root.block, &q->root.filter_list);
 	if (err)
 		return err;
 
