@@ -211,34 +211,57 @@ out:
 struct cpu_topology cpu_topology[NR_CPUS];
 EXPORT_SYMBOL_GPL(cpu_topology);
 
+const struct cpumask *cpu_possible_coregroup_mask(int cpu)
+{
+        return &cpu_topology[cpu].core_possible_sibling;
+}
+
 const struct cpumask *cpu_coregroup_mask(int cpu)
 {
-	return &cpu_topology[cpu].core_sibling;
+        return &cpu_topology[cpu].core_sibling;
+}
+
+static void update_possible_siblings_masks(unsigned int cpuid)
+{
+        struct cpu_topology *cpu_topo, *cpuid_topo = &cpu_topology[cpuid];
+        int cpu;
+
+        if (cpuid_topo->cluster_id == -1)
+                return;
+
+        for_each_possible_cpu(cpu) {
+                cpu_topo = &cpu_topology[cpu];
+
+                if (cpuid_topo->cluster_id != cpu_topo->cluster_id)
+                        continue;
+                cpumask_set_cpu(cpuid, &cpu_topo->core_possible_sibling);
+                cpumask_set_cpu(cpu, &cpuid_topo->core_possible_sibling);
+        }
 }
 
 static void update_siblings_masks(unsigned int cpuid)
 {
-	struct cpu_topology *cpu_topo, *cpuid_topo = &cpu_topology[cpuid];
-	int cpu;
+        struct cpu_topology *cpu_topo, *cpuid_topo = &cpu_topology[cpuid];
+        int cpu;
 
-	/* update core and thread sibling masks */
-	for_each_possible_cpu(cpu) {
-		cpu_topo = &cpu_topology[cpu];
+        /* update core and thread sibling masks */
+        for_each_possible_cpu(cpu) {
+                cpu_topo = &cpu_topology[cpu];
 
-		if (cpuid_topo->cluster_id != cpu_topo->cluster_id)
-			continue;
+                if (cpuid_topo->cluster_id != cpu_topo->cluster_id)
+                        continue;
 
-		cpumask_set_cpu(cpuid, &cpu_topo->core_sibling);
-		if (cpu != cpuid)
-			cpumask_set_cpu(cpu, &cpuid_topo->core_sibling);
+                cpumask_set_cpu(cpuid, &cpu_topo->core_sibling);
+                if (cpu != cpuid)
+                        cpumask_set_cpu(cpu, &cpuid_topo->core_sibling);
 
-		if (cpuid_topo->core_id != cpu_topo->core_id)
-			continue;
+                if (cpuid_topo->core_id != cpu_topo->core_id)
+                        continue;
 
-		cpumask_set_cpu(cpuid, &cpu_topo->thread_sibling);
-		if (cpu != cpuid)
-			cpumask_set_cpu(cpu, &cpuid_topo->thread_sibling);
-	}
+                cpumask_set_cpu(cpuid, &cpu_topo->thread_sibling);
+                if (cpu != cpuid)
+                        cpumask_set_cpu(cpu, &cpuid_topo->thread_sibling);
+        }
 }
 
 void store_cpu_topology(unsigned int cpuid)
@@ -362,6 +385,6 @@ void __init init_cpu_topology(void)
 	} else {
 		set_sched_topology(arm64_topology);
 		for_each_possible_cpu(cpu)
-			update_siblings_masks(cpu);
+			update_possible_siblings_masks(cpu);
 	}
 }

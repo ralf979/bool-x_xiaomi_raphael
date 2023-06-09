@@ -117,6 +117,14 @@ extern unsigned int sysctl_nr_open_min, sysctl_nr_open_max;
 extern int sysctl_nr_trim_pages;
 #endif
 
+#ifndef CONFIG_SCHED_WALT
+unsigned int sysctl_sched_boost;
+unsigned int sysctl_sched_group_upmigrate_pct = 100;
+unsigned int sysctl_sched_group_downmigrate_pct = 95;
+unsigned int sched_group_upmigrate = 20000000;
+unsigned int sched_group_downmigrate = 19000000;
+#endif
+
 /* Constants used for minimum and  maximum */
 #ifdef CONFIG_LOCKUP_DETECTOR
 static int sixty = 60;
@@ -327,7 +335,7 @@ static struct ctl_table sysctl_base_table[] = {
 	{ }
 };
 
-static int min_sched_granularity_ns = 100000;		/* 100 usecs */
+static int min_sched_granularity_ns = 3000000;		/* 100 usecs */
 static int max_sched_granularity_ns = NSEC_PER_SEC;	/* 1 second */
 static int min_wakeup_granularity_ns;			/* 0 usecs */
 static int max_wakeup_granularity_ns = NSEC_PER_SEC;	/* 1 second */
@@ -392,32 +400,34 @@ static struct ctl_table kern_table[] = {
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec,
 	},
-	{
-		.procname	= "sched_group_upmigrate",
-		.data		= &sysctl_sched_group_upmigrate_pct,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= walt_proc_update_handler,
-		.extra1		= &sysctl_sched_group_downmigrate_pct,
-	},
-	{
-		.procname	= "sched_group_downmigrate",
-		.data		= &sysctl_sched_group_downmigrate_pct,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= walt_proc_update_handler,
-		.extra1		= &zero,
-		.extra2		= &sysctl_sched_group_upmigrate_pct,
-	},
-	{
-		.procname	= "sched_boost",
-		.data		= &sysctl_sched_boost,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= sched_boost_handler,
-		.extra1		= &neg_three,
-		.extra2		= &three,
-	},
+#ifndef CONFIG_SCHED_WALT
+        {
+                .procname       = "sched_boost",
+                .data           = &sysctl_sched_boost,
+                .maxlen         = sizeof(unsigned int),
+                .mode           = 0644,
+                .proc_handler   = proc_douintvec_minmax,
+                .extra1         = &neg_three,
+                .extra2         = &three,
+        },
+        {
+                .procname       = "sched_group_upmigrate",
+                .data           = &sysctl_sched_group_upmigrate_pct,
+                .maxlen         = sizeof(unsigned int),
+                .mode           = 0644,
+                .proc_handler   = proc_douintvec_minmax,
+                .extra1         = &sysctl_sched_group_downmigrate_pct,
+        },
+        {
+                .procname       = "sched_group_downmigrate",
+                .data           = &sysctl_sched_group_downmigrate_pct,
+                .maxlen         = sizeof(unsigned int),
+                .mode           = 0644,
+                .proc_handler   = proc_douintvec_minmax,
+                .extra1         = &zero,
+                .extra2         = &sysctl_sched_group_upmigrate_pct,
+        },
+#endif
 	{
                 .procname       = "sched_conservative_pl",
                 .data           = &sysctl_sched_conservative_pl,
