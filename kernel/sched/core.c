@@ -994,7 +994,32 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 	if (task_group(p) == &root_task_group)
 		return uc_req;
 
-	tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
+	if (kp_active_mode() != 1) {
+		css = task_css(p, cpu_cgrp_id);
+		if (strcmp(css->cgroup->kn->name, "top-app") == 0
+			&& time_before(jiffies, last_input_time + msecs_to_jiffies(5000))) {
+			if (time_before(jiffies, last_input_time + msecs_to_jiffies(500)))
+				tg_min = 612;
+			else
+				tg_min = 410;
+		} else if (strcmp(css->cgroup->kn->name, "foreground") == 0
+			&& time_before(jiffies, last_mb_time + msecs_to_jiffies(5000))) {
+			if (time_before(jiffies, last_mb_time + msecs_to_jiffies(100)))
+				tg_min = 505;
+			else if (time_before(jiffies, last_mb_time + msecs_to_jiffies(1000)))
+				tg_min = 307;
+			else
+				tg_min = 159;
+		} else if (strcmp(css->cgroup->kn->name, "camera-daemon") == 0
+			&& time_before(jiffies, last_cam_time + msecs_to_jiffies(1000))) {
+			tg_min = 612;
+		} else {
+			tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
+		}
+	} else {
+		tg_min = 0;
+	}
+
 	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
 	value = uc_req.value;
 	value = clamp(value, tg_min, tg_max);
