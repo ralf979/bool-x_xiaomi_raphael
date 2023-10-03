@@ -1194,11 +1194,7 @@ ZSTD_decodeSequence(seqState_t* seqState, const ZSTD_longOffset_e longOffsets)
 
         /* sequence */
         {   size_t offset;
-    #if defined(__clang__)
-            if (LIKELY(ofBits > 1)) {
-    #else
             if (ofBits > 1) {
-    #endif
                 ZSTD_STATIC_ASSERT(ZSTD_lo_isLongOffset == 1);
                 ZSTD_STATIC_ASSERT(LONG_OFFSETS_MAX_EXTRA_BITS_32 == 5);
                 assert(ofBits <= MaxOff);
@@ -1232,11 +1228,7 @@ ZSTD_decodeSequence(seqState_t* seqState, const ZSTD_longOffset_e longOffsets)
             seq.offset = offset;
         }
 
-    #if defined(__clang__)
-        if (UNLIKELY(mlBits > 0))
-    #else
         if (mlBits > 0)
-    #endif
             seq.matchLength += BIT_readBitsFast(&seqState->DStream, mlBits/*>0*/);
 
         if (MEM_32bits() && (mlBits+llBits >= STREAM_ACCUMULATOR_MIN_32-LONG_OFFSETS_MAX_EXTRA_BITS_32))
@@ -1246,11 +1238,7 @@ ZSTD_decodeSequence(seqState_t* seqState, const ZSTD_longOffset_e longOffsets)
         /* Ensure there are enough bits to read the rest of data in 64-bit mode. */
         ZSTD_STATIC_ASSERT(16+LLFSELog+MLFSELog+OffFSELog < STREAM_ACCUMULATOR_MIN_64);
 
-    #if defined(__clang__)
-        if (UNLIKELY(llBits > 0))
-    #else
         if (llBits > 0)
-    #endif
             seq.litLength += BIT_readBitsFast(&seqState->DStream, llBits/*>0*/);
 
         if (MEM_32bits())
@@ -2015,7 +2003,9 @@ ZSTD_decompressBlock_internal(ZSTD_DCtx* dctx,
         ip += seqHSize;
         srcSize -= seqHSize;
 
-        RETURN_ERROR_IF(dst == NULL && nbSeq > 0, dstSize_tooSmall, "NULL not handled");
+        RETURN_ERROR_IF((dst == NULL || dstCapacity == 0) && nbSeq > 0, dstSize_tooSmall, "NULL not handled");
+        RETURN_ERROR_IF(MEM_64bits() && sizeof(size_t) == sizeof(void*) && (size_t)(-1) - (size_t)dst < (size_t)(1 << 20), dstSize_tooSmall,
+                "invalid dst");
 
 #if !defined(ZSTD_FORCE_DECOMPRESS_SEQUENCES_SHORT) && \
     !defined(ZSTD_FORCE_DECOMPRESS_SEQUENCES_LONG)
@@ -2060,13 +2050,22 @@ void ZSTD_checkContinuity(ZSTD_DCtx* dctx, const void* dst, size_t dstSize)
 }
 
 
-size_t ZSTD_decompressBlock(ZSTD_DCtx* dctx,
-                            void* dst, size_t dstCapacity,
-                      const void* src, size_t srcSize)
+size_t ZSTD_decompressBlock_deprecated(ZSTD_DCtx* dctx,
+                                       void* dst, size_t dstCapacity,
+                                 const void* src, size_t srcSize)
 {
     size_t dSize;
     ZSTD_checkContinuity(dctx, dst, dstCapacity);
     dSize = ZSTD_decompressBlock_internal(dctx, dst, dstCapacity, src, srcSize, /* frame */ 0, not_streaming);
     dctx->previousDstEnd = (char*)dst + dSize;
     return dSize;
+}
+
+
+/* NOTE: Must just wrap ZSTD_decompressBlock_deprecated() */
+size_t ZSTD_decompressBlock(ZSTD_DCtx* dctx,
+                            void* dst, size_t dstCapacity,
+                      const void* src, size_t srcSize)
+{
+    return ZSTD_decompressBlock_deprecated(dctx, dst, dstCapacity, src, srcSize);
 }
